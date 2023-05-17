@@ -4,6 +4,10 @@ from dg_tswe.dg_cubed_sphere_tswe import DGCubedSphereTSWE
 from dg_tswe.cubed_sphere_swe import CubedSphereSWE
 import numpy as np
 import scipy
+import os
+
+if not os.path.exists('./plots'): os.makedirs('./plots')
+if not os.path.exists('./data'): os.makedirs('./data')
 
 plt.rcParams['font.size'] = '12'
 
