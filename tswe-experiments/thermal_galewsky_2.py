@@ -164,6 +164,11 @@ def initial_condition(face):
     beta = 1 / 15
     lat_2 = np.pi / 4
     h_pert = 120 * np.cos(lat) * np.exp(-(long / alpha) ** 2) * np.exp(-((lat_2 - lat) / beta) ** 2)
+
+    b_pert = np.cos(lat) * np.exp(-(long / alpha) ** 2) * np.exp(-((lat_2 - lat) / beta) ** 2)
+    b = g * (1 + 0.05 * (h_0 / h) ** 2)
+    hb = h * (b + b_pert)
+
     h += h_pert
 
     u_ = zonal_flow(lat)
@@ -171,25 +176,22 @@ def initial_condition(face):
     v = long_vec_y * u_
     w = long_vec_z * u_
 
-    b_pert = np.cos(lat) * np.exp(-(long / alpha) ** 2) * np.exp(-((lat_2 - lat) / beta) ** 2)
-    hb = h * (g + b_pert)
-
     return u, v, w, h, hb
 
 
 if mode == 'run':
 
-    nx = ny = 64
-    exp_names = [f'EngCons_DG_cntr_res_6x{nx}x{ny}']
-
-    for exp in exp_names:
+    nx = ny = 16
+    exp_names = [f'Gal2EngCons_DG_cntr_res_6x{nx}x{ny}', f'Gal2EntCons_DG_cntr_res_6x{nx}x{ny}', f'Gal2DG_cntr_res_6x{nx}x{ny}']
+    classes = [EngConsDGCubedSphereTSWE, EntConsDGCubedSphereTSWE, DGCubedSphereTSWE]
+    for exp, cls in zip(exp_names, classes):
         if 'cntr' in exp:
             a = 0.0
             upwind = False
         else:
             a = 0.5
             upwind = True
-        solver = EngConsDGCubedSphereTSWE(
+        solver = cls(
             poly_order, nx, ny, g, f,
             eps, device=dev, solution=None, a=a, radius=radius, upwind=upwind,
             dtype=np.float64
