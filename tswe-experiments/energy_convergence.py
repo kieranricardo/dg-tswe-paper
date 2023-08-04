@@ -111,7 +111,7 @@ print('Entropy convergence:', r)
 
 plt.figure(1)
 plt.ylabel("Relative L2 error")
-plt.xlabel("Timestep (s)")
+plt.xlabel("$\Delta t$ (s)")
 plt.loglog(dts, energy_errors, '--o', label="Energy error")
 plt.loglog(dts, entropy_errors, '--o', label="Entropy error")
 #

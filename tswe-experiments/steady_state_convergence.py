@@ -85,6 +85,27 @@ ns = np.array([3, 5, 10, 15, 30]) #, 25, 30])
 grid_spacing = 360 / (ns * 4 * 3)
 tend = 5.0 * 24 * 3600
 
+# plot IC
+solver = DGCubedSphereTSWE(
+    poly_order, 30, 30, g, f,
+    eps, device=dev, solution=None, a=0.5, radius=radius,
+    dtype=np.float64, damping=None
+)
+
+for face in solver.faces.values():
+    face.set_initial_condition(*initial_condition(face))
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.set_xlabel("x (km)")
+ax.set_ylabel("y (km)")
+
+vmin = min((s.hb / s.h).min() for s in solver.faces.values())
+vmax = max((s.hb / s.h).max() for s in solver.faces.values())
+im = solver.triangular_plot(ax, latlong=False, vmin=vmin, vmax=vmax, plot_func=lambda s: s.hb / s.h, n=20)
+plt.colorbar(im[0])
+plt.savefig('./plots/steady_state_ic.png')
+exit(0)
 for exp, a, up in zip(exps, coeffs, ups):
     h_errors = []
     b_errors = []

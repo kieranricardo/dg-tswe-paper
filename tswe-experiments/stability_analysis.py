@@ -20,7 +20,7 @@ nx = ny = 64
 
 exp_names = [f'EntCons_DG_cntr_res_6x{nx}x{ny}', f'EngCons_DG_cntr_res_6x{nx}x{ny}']
 labels = ['Entropy cons.', 'Energy cons.']
-for exp, label in zip(exp_names, labels):
+for exp, label in list(zip(exp_names, labels))[1:]:
     fn_template = f"{exp}_day_{20}.npy"
     diagnostics = np.load(os.path.join('data', f"diagnostics_{fn_template}"))
     times = diagnostics[0] / (24 * 3600)
@@ -48,7 +48,7 @@ for exp, label in zip(exp_names, labels):
     ax.set_yscale('symlog', linthresh=1e-15)
     ax.grid(True, which='both')
 
-    plt.legend()
+    # plt.legend()
     plt.tight_layout()
 
 plt.savefig(f'./plots/galewsky_stability.png')

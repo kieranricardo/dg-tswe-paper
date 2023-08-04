@@ -178,7 +178,7 @@ class DGCubedSphereTSWE:
         else:
             raise ValueError(f"dim: expected one of 2, 3. Found {dim}.")
 
-    def triangular_plot(self, ax, vmin=None, vmax=None, plot_func=None, cmap='nipy_spectral', latlong=False):
+    def triangular_plot(self, ax, vmin=None, vmax=None, plot_func=None, cmap='nipy_spectral', latlong=False, n=None):
         data = [plot_func(face).ravel() for face in self.faces.values()]
         if not latlong:
             x_coords = [face.xs.ravel() for face in self.faces.values()]
@@ -200,7 +200,8 @@ class DGCubedSphereTSWE:
         else:
             mask = z_coords > 0
 
-        n = 200
+        if n is None:
+            n = 200
         levels = np.linspace(vmin, vmax, n)
         # print('Num levels', n)
         # ax.tricontour(
