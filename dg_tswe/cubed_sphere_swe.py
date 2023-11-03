@@ -786,52 +786,6 @@ class CubedSphereFace:
 
         return vort
 
-    def vorticity(self, u=None, v=None, w=None, h=None):
-        if u is None:
-            u = self.u
-        if v is None:
-            v = self.v
-        if w is None:
-            w = self.w
-        if h is None:
-            h = self.h
-
-        vort = self.dg_vort(u, v, w, h)
-
-        vort_sum = torch.zeros_like(vort) + vort * self.J * self.weights
-        h_sum = self.J * self.weights
-
-        Jw = self.J * self.weights
-
-        h_sum[0, :, 0] = h_sum[0, :, 0] + Jw[0, :, 0]
-        h_sum[-1, :, -1] = h_sum[-1, :, -1] + Jw[-1, :, -1]
-        h_sum[:, 0, :, 0] = h_sum[:, 0, :, 0] + Jw[:, 0, :, 0]
-        h_sum[:, -1, :, -1] = h_sum[:, -1, :, -1] + Jw[:, -1, :, -1]
-
-        vort_sum[0, :, 0] = vort_sum[0, :, 0] + self.vort_down[0] * Jw[0, :, 0]
-        vort_sum[-1, :, -1] = vort_sum[-1, :, -1] + self.vort_up[-1] * Jw[-1, :, -1]
-        vort_sum[:, 0, :, 0] = vort_sum[:, 0, :, 0] + self.vort_left[:, 0] * Jw[:, 0, :, 0]
-        vort_sum[:, -1, :, -1] = vort_sum[:, -1, :, -1] + self.vort_right[:, -1] * Jw[:, -1, :, -1]
-
-        for tnsr in [vort_sum, h_sum]:
-            tnsr[:, 1:, :, 0] = tnsr[:, 1:, :, 0] + tnsr[:, :-1, :, -1]
-            tnsr[:, :-1, :, -1] = tnsr[:, 1:, :, 0]
-
-            tnsr[1:, :, 0] = tnsr[1:, :, 0] + tnsr[:-1, :, -1]
-            tnsr[:-1, :, -1] = tnsr[1:, :, 0]
-
-            if self.xperiodic:
-                tnsr[:, 0, :, 0] = tnsr[:, 0, :, 0] + tnsr[:, -1, :, -1]
-                tnsr[:, -1, :, -1] = tnsr[:, 0, :, 0]
-
-            if self.yperiodic:
-                tnsr[0, :, 0] = tnsr[0, :, 0] + tnsr[-1, :, -1]
-                tnsr[-1, :, -1] = tnsr[0, :, 0]
-
-        vort = vort_sum / h_sum
-
-        return vort
-
     def dg_vort(self, u=None, v=None, w=None, h=None):
         if u is None:
             u = self.u

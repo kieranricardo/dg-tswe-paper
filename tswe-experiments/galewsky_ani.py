@@ -20,7 +20,7 @@ plt.rcParams.update({'figure.autolayout': True})
 mode = 'run'
 dev = 'cpu'
 
-nx = ny = 32
+nx = ny = 64
 eps = 0.8
 g = 9.80616
 f = 7.292e-5
@@ -30,18 +30,20 @@ poly_order = 3
 u_0 = 80
 h_0 = 10_000
 
-def plot_sol(solver, solver_hr, sw_solver, ax1, ax2):
+def plot_sol(solver, solver_hr, sw_solver, ax1, ax2, first=False):
 
 
     def interpolate_plot_func(s, sol):
         data = plot_func(sol.faces[s.name])
         return interpolator.torch_interpolate(data)
 
-    vmin = 9.5
-    vmax = 10.6
+    vmin = 9.6
+    vmax = 10.5
     plot_func = lambda s: s.b_H1()
     im = solver_hr.triangular_plot(ax1, vmin=vmin, vmax=vmax, latlong=False, plot_func=lambda s: interpolate_plot_func(s, solver))
-    plt.colorbar(im[0], format=ticker.FuncFormatter(fmt))
+
+    if first:
+        plt.colorbar(im[0], format=ticker.FuncFormatter(fmt))
 
     vmin = -0.00015;
     vmax = 0.00015
@@ -52,7 +54,8 @@ def plot_sol(solver, solver_hr, sw_solver, ax1, ax2):
     sw_solver.boundaries()
 
     im = solver_hr.triangular_plot(ax2, vmin=vmin, vmax=vmax, latlong=False, plot_func=lambda s: interpolate_plot_func(s, sw_solver))
-    plt.colorbar(im[0], format=ticker.FuncFormatter(fmt))
+    if first:
+        plt.colorbar(im[0], format=ticker.FuncFormatter(fmt))
 
 def fmt(x, pos):
     a, b = '{:.2e}'.format(x).split('e')
@@ -110,7 +113,7 @@ def initial_condition(face):
 
 solver = DGCubedSphereTSWE(
     poly_order, nx, ny, g, f,
-    eps, device=dev, solution=None, a=0.5, radius=radius, upwind=True,
+    eps, device=dev, solution=None, a=0.0, radius=radius, upwind=True,
     dtype=np.float64
 )
 
@@ -128,11 +131,23 @@ solver_hr = DGCubedSphereTSWE(
 )
 interpolator = Interpolate(3, p)
 
-for face in solver.faces.values():
-    face.set_initial_condition(*initial_condition(face))
+start_day = 10
+exp = f'DG_res_6x{nx}x{ny}'
+
+if start_day == 0:
+    for face in solver.faces.values():
+        face.set_initial_condition(*initial_condition(face))
+else:
+    fn_template = f"{exp}_day_{start_day}.npy"
+    solver.load_restart(fn_template, 'data')
 
 solver.boundaries()
-exp = f'DG_res_6x{nx}x{ny}'
+
+
+print(solver.integrate({n: f.dEdt() for n, f in solver.faces.items()}) / solver.integrate(solver.energy()))
+print()
+
+exit(0)
 
 print('Time step:', solver.get_dt())
 print('Starting', exp)
@@ -150,14 +165,18 @@ for ax in (ax1, ax2):
 
 
 moviewriter = MovieWriter(fps=20)
-ndays = 20
+ndays = 10
 tend = ndays * 3600 * 24
 
 fame_dt = 3600
 n_frames = int(tend / fame_dt)
 
-with moviewriter.saving(fig, f"./videos/galewksy_res_6x{nx}x{ny}_order_{poly_order}_time_{ndays}.mp4", dpi=100):
-    plot_sol(solver, solver_hr, sw_solver, ax1, ax2)
+# plot_sol(solver, solver_hr, sw_solver, ax1, ax2, first=True)
+# plt.show()
+# exit()
+
+with moviewriter.saving(fig, f"./videos/galewksy_res_6x{nx}x{ny}_order_{poly_order}_time_{ndays + start_day}.mp4", dpi=100):
+    plot_sol(solver, solver_hr, sw_solver, ax1, ax2, first=True)
     moviewriter.grab_frame()
 
     for _ in range(n_frames):
@@ -168,7 +187,7 @@ with moviewriter.saving(fig, f"./videos/galewksy_res_6x{nx}x{ny}_order_{poly_ord
             dt = min(dt, tend - solver.time)
             solver.time_step(dt=dt)
 
-        plot_sol(solver, solver_hr, sw_solver, ax1, ax2)
+        plot_sol(solver, solver_hr, sw_solver, ax1, ax2, first=False)
         moviewriter.grab_frame()
         print('Days:', solver.time / (24 * 3600))
 
