@@ -266,11 +266,11 @@ class DGCubedSphereTSWE:
 
         tunit = ' (days)'
         # fig, axs = plt.subplots(2, 2, figsize=(7, 7), sharex=True)
-        plt.suptitle("Conservation errors")
+        # plt.suptitle("Conservation errors")
 
         ax = plt.subplot(2, 2, 1)
         # ax = axs[0][0]
-        ax.set_ylabel("Energy error (normalized)")
+        ax.set_ylabel("Energy")
         # ax.set_xlabel("Time" + tunit)
         ax.set_xticks([], [])
         ax.plot(times, (energy - energy[0]) / energy[0], label=label)
@@ -278,14 +278,16 @@ class DGCubedSphereTSWE:
         ax.grid(True, which='both')
 
         ax = plt.subplot(2, 2, 2)
-        ax.set_ylabel("Mass error (normalized)")
+        ax.set_ylabel("Mass")
         ax.set_xticks([], [])
         ax.plot(times, (mass - mass[0]) / mass[0], label=label)
         ax.set_yscale('symlog', linthresh=1e-16)
+        abs_max = abs((mass - mass[0]) / mass[0]).max()
+        ax.set_ylim(-1.2 * abs_max, 1.2 * abs_max)
         ax.grid(True, which='both')
 
         ax = plt.subplot(2, 2, 3)
-        ax.set_ylabel("Entropy error (normalized)")
+        ax.set_ylabel("Entropy")
         ax.set_xlabel("Time" + tunit)
         ax.plot(times, (entropy - entropy[0]) / entropy[0], label=label)
         ax.set_yscale('symlog', linthresh=1e-15)
@@ -293,7 +295,7 @@ class DGCubedSphereTSWE:
 
         ax = plt.subplot(2, 2, 4)
         # ax = axs[1][1]
-        plt.ylabel("Buoyancy error (normalized)")
+        plt.ylabel("Buoyancy")
         plt.xlabel("Time" + tunit)
         plt.plot(times, (buoyancy - buoyancy[0]) / buoyancy[0], label=label)
         ax.set_yscale('symlog', linthresh=1e-16)

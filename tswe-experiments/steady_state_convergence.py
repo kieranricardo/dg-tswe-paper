@@ -48,38 +48,11 @@ def initial_condition(face):
     return u, v, w, h, h * b
 
 
-# vort = -dudy + f
-# u^T  = u j
-
-# vort * u^T + g dgdy + u * dudy
-# = (-dudy + f) * u + g dgdy + u * dudy = f * u + g dgdy
-
-# s = g + k
-# f * u + g dgdy = 0
-# k * dhdy + 0.5 * h * dkdy = 0 -- (1 / h ^ 2) ?
-
-# def initial_condition(face):
-#     lat, long = face.geometry.lat_long(face.xs, face.ys, face.zs)
-#     lat_vec_x, lat_vec_y, lat_vec_z, long_vec_x, long_vec_y, long_vec_z = face.geometry.lat_long_vecs(face.xs, face.ys, face.zs)
-#     u_0 = 2 * np.pi * 6.37122e6 / (12 * 24 * 3600)
-#     h_0 = 2.94e4 / g
-#
-#     h = h_0 - (face.geometry.radius * f * u_0 / g) * np.sin(lat)
-#     u_ = u_0 * np.cos(lat)
-#     b = g * (1 + 0.05 * (h_0 / h) ** 2)
-#
-#     u = long_vec_x * u_
-#     v = long_vec_y * u_
-#     w = long_vec_z * u_
-#
-#     return u, v, w, h, h * b
-
-
-#(F1p + F2p) * (F1 + F2p) = F1p
-
+run = False
 exps = ['diss.', 'cons.']
 coeffs = [0.5, 0.0]
 ups = [True, False]
+markers = {exps[0]: '--', exps[1]: '-'}
 
 ns = np.array([3, 5, 10, 15, 30]) #, 25, 30])
 grid_spacing = 360 / (ns * 4 * 3)
@@ -95,7 +68,7 @@ solver = DGCubedSphereTSWE(
 for face in solver.faces.values():
     face.set_initial_condition(*initial_condition(face))
 
-fig = plt.figure()
+fig = plt.figure(1)
 ax = fig.add_subplot(111)
 ax.set_xlabel("x (km)")
 ax.set_ylabel("y (km)")
@@ -105,58 +78,68 @@ vmax = max((s.hb / s.h).max() for s in solver.faces.values())
 im = solver.triangular_plot(ax, latlong=False, vmin=vmin, vmax=vmax, plot_func=lambda s: s.hb / s.h, n=20)
 plt.colorbar(im[0])
 plt.savefig('./plots/steady_state_ic.png')
-exit(0)
+
+
 for exp, a, up in zip(exps, coeffs, ups):
     h_errors = []
     b_errors = []
     vel_errors = []
-    for n in ns:
-        print('Running', n)
-        solver = DGCubedSphereTSWE(
-            poly_order, n, n, g, f,
-            eps, device=dev, solution=None, a=a, radius=radius,
-            dtype=np.float64, upwind=up, damping=None,
-        )
+    if run:
+        for n in ns:
+            print('Running', n)
+            solver = DGCubedSphereTSWE(
+                poly_order, n, n, g, f,
+                eps, device=dev, solution=None, a=a, radius=radius,
+                dtype=np.float64, upwind=up, damping=None,
+            )
 
-        solver0 = DGCubedSphereTSWE(
-            poly_order, n, n, g, f,
-            eps, device=dev, solution=None, a=0.5, radius=radius,
-            dtype=np.float64, damping=None
-        )
+            solver0 = DGCubedSphereTSWE(
+                poly_order, n, n, g, f,
+                eps, device=dev, solution=None, a=0.5, radius=radius,
+                dtype=np.float64, damping=None
+            )
 
-        for face in solver.faces.values():
-            face.set_initial_condition(*initial_condition(face))
+            for face in solver.faces.values():
+                face.set_initial_condition(*initial_condition(face))
 
-        for face in solver0.faces.values():
-            face.set_initial_condition(*initial_condition(face))
+            for face in solver0.faces.values():
+                face.set_initial_condition(*initial_condition(face))
 
-        h_norm = np.sqrt(sum(face.integrate(face.h ** 2) for face in solver.faces.values()))
-        b_norm = np.sqrt(sum(face.integrate(face.hb ** 2) for face in solver.faces.values()))
-        vel_norm = np.sqrt(sum(face.integrate(face.u ** 2 + face.v ** 2 + face.w ** 2) for face in solver.faces.values()))
+            h_norm = np.sqrt(sum(face.integrate(face.h ** 2) for face in solver.faces.values()))
+            b_norm = np.sqrt(sum(face.integrate(face.hb ** 2) for face in solver.faces.values()))
+            vel_norm = np.sqrt(sum(face.integrate(face.u ** 2 + face.v ** 2 + face.w ** 2) for face in solver.faces.values()))
 
-        while solver.time < tend:
-            # if solver.time > 3600 * 24:
-            #     solver.damping = 'adaptive'
-            dt = solver.get_dt()
-            dt = min(dt, tend - solver.time)
-            solver.time_step(dt=dt)
+            while solver.time < tend:
+                dt = solver.get_dt()
+                dt = min(dt, tend - solver.time)
+                solver.time_step(dt=dt)
 
-        h_error = sum(f1.integrate((f1.h - f2.h) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
-        h_error = np.sqrt(h_error) / h_norm
+            h_error = sum(f1.integrate((f1.h - f2.h) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
+            h_error = np.sqrt(h_error) / h_norm
 
-        vel_error = sum(f1.integrate((f1.u - f2.u) ** 2 + (f1.v - f2.v) ** 2 + (f1.w - f2.w) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
-        vel_error = np.sqrt(vel_error) / vel_norm
+            vel_error = sum(f1.integrate((f1.u - f2.u) ** 2 + (f1.v - f2.v) ** 2 + (f1.w - f2.w) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
+            vel_error = np.sqrt(vel_error) / vel_norm
 
-        b_error = sum(f1.integrate((f1.hb - f2.hb) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
-        b_error = np.sqrt(b_error) / b_norm
+            b_error = sum(f1.integrate((f1.hb - f2.hb) ** 2) for f1, f2 in zip(solver.faces.values(), solver0.faces.values()))
+            b_error = np.sqrt(b_error) / b_norm
 
-        h_errors.append(h_error)
-        b_errors.append(b_error)
-        vel_errors.append(vel_error)
+            h_errors.append(h_error)
+            b_errors.append(b_error)
+            vel_errors.append(vel_error)
 
-    h_errors = np.array(h_errors)
-    b_errors = np.array(b_errors)
-    vel_errors = np.array(vel_errors)
+        h_errors = np.array(h_errors)
+        b_errors = np.array(b_errors)
+        vel_errors = np.array(vel_errors)
+
+        np.save(f'data/{exp}_h_errors.npy', h_errors)
+        np.save(f'data/{exp}_b_errors.npy', b_errors)
+        np.save(f'data/{exp}_vel_errors.npy', vel_errors)
+        np.save(f'data/{exp}_grid_spacing.npy', grid_spacing)
+
+    h_errors = np.load(f'data/{exp}_h_errors.npy')
+    b_errors = np.load(f'data/{exp}_b_errors.npy')
+    vel_errors = np.load(f'data/{exp}_vel_errors.npy')
+    grid_spacing = np.load(f'data/{exp}_grid_spacing.npy')
 
     r, *_ = linregress(np.log(grid_spacing), np.log(np.array(h_errors)))
     print('h convergence:', r)
@@ -165,18 +148,23 @@ for exp, a, up in zip(exps, coeffs, ups):
     r, *_ = linregress(np.log(grid_spacing), np.log(np.array(vel_errors)))
     print('vel convergence:', r)
 
-    plt.figure(1)
+
+    plt.figure(2)
     plt.ylabel("Relative L2 error")
-    plt.xlabel("Resolution")
-    plt.loglog(grid_spacing, h_errors, '--o', label=f"h {exp}")
-    plt.loglog(grid_spacing, b_errors, '--o', label=f"hb {exp}")
-    plt.loglog(grid_spacing, vel_errors, '--o', label=f"u {exp}")
+    plt.xlabel("Resolution (degrees)")
+    plt.loglog(grid_spacing, h_errors, f'r{markers[exp]}', label=f"h {exp}")
+    plt.loglog(grid_spacing, b_errors, f'b{markers[exp]}', label=f"hb {exp}")
+    plt.loglog(grid_spacing, vel_errors, f'g{markers[exp]}', label=f"u {exp}")
 
 
-plt.plot(grid_spacing, (1 / 3) * h_errors[0] * (grid_spacing[0] ** (-4)) * (grid_spacing ** (4)), linestyle='--', label='4th order')
-plt.plot(grid_spacing, 3 * h_errors[0] * (grid_spacing[0] ** (-3)) * (grid_spacing ** (3)), linestyle='--', label='3rd order')
+plt.plot(grid_spacing, (1 / 6) * h_errors[0] * (grid_spacing[0] ** (-4)) * (grid_spacing ** (4)), linestyle='dotted', color='black', label='4th order')
+plt.plot(grid_spacing, 6 * h_errors[0] * (grid_spacing[0] ** (-3)) * (grid_spacing ** (3)), linestyle='dashdot', color='black', label='3rd order')
+plt.xticks(grid_spacing, [str(x) for x in grid_spacing])
 plt.grid()
-plt.legend()
+
+handles, labels = plt.gca().get_legend_handles_labels()
+order = [5, 2, 4, 1, 3, 0, 6, 7]
+plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc=4)
 plt.savefig('./plots/steady_state_error.png')
 plt.show()
 
